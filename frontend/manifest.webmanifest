@@ -1,0 +1,22 @@
+{
+  "name": "智能多维投资系统 · 家庭资产配置多智能体投顾",
+  "short_name": "智能多维投资系统",
+  "description": "面向中国家庭的多智能体智能投顾系统：可测量的共识收敛 + 对抗性风控 + 硬门禁校验",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F6F2E9",
+  "theme_color": "#F6F2E9",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "审议现场", "url": "/#live" },
+    { "name": "配置方案", "url": "/#plan" },
+    { "name": "压力测试", "url": "/#stress" }
+  ]
+}

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  手机端壳应用：把电脑上运行的 Multivest 后端用 WebView 打开。
+
+  架构说明：本项目的后端是一个跑在**电脑上**的本地服务（默认 127.0.0.1:8760，
+  同时绑定 0.0.0.0 供局域网访问）。手机上不需要跑任何 Python ——
+  这个 APK 只是一个"连到同一个后端"的浏览器壳，因此手机与电脑看到的
+  是同一份数据、同一份研判结果。
+
+  usesCleartextTraffic：局域网内后端走的是明文 HTTP（没有证书），
+  Android 9 起默认禁止明文流量，必须显式允许，否则连接直接被系统拦掉。
+  这里用 networkSecurityConfig 而不是全局 usesCleartextTraffic="true"，
+  把放行范围限定在私有网段，公网域名仍要求 HTTPS。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.fangqian616.multivest"
+    android:versionCode="1"
+    android:versionName="1.1.0">
+
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:usesCleartextTraffic="true"
+        android:hardwareAccelerated="true"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

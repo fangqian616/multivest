@@ -1,0 +1,65 @@
+# ── 秘钥与本地数据（绝不入库）────────────────────────────────
+.env
+.env.*
+!.env.example
+*.key
+*.credentials
+*.token
+
+# 该项目目录里原有的一份账号/凭据清单，绝不入库
+账号清单.md
+*账号清单*
+
+# 本地运行数据：研判结果、审议记录、家庭档案
+backend/runs/
+backend/profiles/
+backend/daily/
+backend/_degrade_test/
+智能多维数据/
+
+# ── 打包产物与构建中间件 ──────────────────────────────────────
+build/
+built/
+*.spec
+dist/*
+!dist/.gitkeep
+.desktop-profile/
+
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ── 临时与日志 ────────────────────────────────────────────────
+*.log
+tmp/
+崩溃日志.txt
+_pkg.txt
+_lastrun.txt
+_runreal.py
+
+# 应用内配置（含 API 密钥）—— 绝不入库
+settings.json
+backend/settings.json
+
+# ── 交付用的打包文件（给用户下载，不进仓库本身）─────────────────
+*.zip
+_pkg_staging/
+
+# ── 原始未压缩截图（README 用 docs/screenshots/ 里的压缩版）────
+docs/界面截图/
+
+# ── 一次性脚本与参考文件（不入库）─────────────────────────────
+_ref_*.md
+tools/shot/_*.mjs
+_*.py
+_*.txt
+_lit/
+
+# ── Android 构建产物 ────────────────────────────────────────────────
+android/keystore/
+android/build/
+*.idsig
+*.apk

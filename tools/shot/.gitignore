@@ -1,0 +1,4 @@
+# 截图工具的本地依赖（puppeteer-core），不入库
+node_modules/
+package.json
+package-lock.json

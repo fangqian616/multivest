@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  明文 HTTP 的放行策略。
+
+  背景：后端跑在**用户的电脑**上，走局域网明文 HTTP。Android 9 (API 28) 起
+  cleartextTrafficPermitted 默认为 false，不放行则连接被系统在底层直接拒绝，
+  界面上只表现为"网页无法打开"，很难定位。
+
+  为什么不按网段白名单：服务地址由用户在手机上手填（192.168.x.x 之外的
+  网段、企业网 10.x、随身 WiFi 都可能），构建期无法枚举。
+  Android 的 network-security-config 里 <domain> 只做主机名/字面量匹配，
+  写 192.168.0.0 只能匹配这一个地址，起不到"放行 192.168.0.0/16"的作用 ——
+  写成网段是常见的错误用法。因此这里在 base-config 上整体放行明文，
+  并把风险讲清楚：本应用只应连接你自己局域网内的服务，不要填公网地址。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

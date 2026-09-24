@@ -1,0 +1,41 @@
+{
+ "source": "腾讯证券行情接口 web.ifzq.gtimg.cn（日线；主源 kline/kline 非复权，备源 fqkline/get 前复权）",
+ "adjust_note": "ETF 在 fqkline 接口只返回约 639 条（2024 年起），改用 kline 接口可回溯至 2018-06。kline 为非复权价；本资产池中黄金ETF/纳指ETF 基本不分红，国债与企业债指数本身即全价指数，故影响可控。逐标的的口径见 market_history.json 的 price_adjust 字段。",
+ "fetched_at": "2026-09-22T09:31:22+08:00",
+ "n_symbols": 22,
+ "trading_days_per_year": 244.0,
+ "split_repair": {
+  "note": "非复权序列中的份额折算/拆分已自动检测并修复（单日跌幅>25% 或涨幅>100% 判为折算）。修复只调整价格水平，不影响收益率序列的正确性；未修复时这些假跳变会严重污染波动率、最大回撤与相关系数矩阵。",
+  "n_symbols_affected": 2,
+  "detail": {
+   "sh513100": {
+    "name": "纳指ETF",
+    "n_events": 1,
+    "events": [
+     {
+      "date": "2022-01-14",
+      "prev_close": 5.192,
+      "close": 1.015,
+      "ratio": 0.195493,
+      "apparent_return": -0.8045
+     }
+    ]
+   },
+   "sh513500": {
+    "name": "标普500ETF",
+    "n_events": 1,
+    "events": [
+     {
+      "date": "2022-03-30",
+      "prev_close": 2.735,
+      "close": 1.39,
+      "ratio": 0.508227,
+      "apparent_return": -0.4918
+     }
+    ]
+   }
+  }
+ },
+ "rate_table_note": "以下为无连续行情的固收类基准，按公开监管/行业数据人工维护，非实时报价。",
+ "disclaimer": "历史统计不代表未来收益。本数据集仅用于配置模型的参数估计与压力测试，不构成任何投资建议。"
+}
