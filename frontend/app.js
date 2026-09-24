@@ -634,22 +634,69 @@ function renderDaily(rec) {
   $('#daily-badge').hidden = false;
 }
 
-/* ── 风险管理：波动状态与波动目标化 ──────────────────────────────────────
-   这个板块**不做涨跌预测** —— 收益的 20 日自相关实测为 −0.007，方向不可预测。
-   它做一件有实证支持的事：用 HAR 预测波动率，据此让组合承担的风险保持恒定。
-   ──────────────────────────────────────────────────────────────────────── */
+/* 波动位置图：把「现在在哪、未来去哪」画成一条轴。
+   只讲一件事 —— 当前波动相对历史区间与目标水平的位置。
+   （这张图原本叫 volBandSvg，随诊断面板一起被删掉了，此处重写。） */
+function volBandSvg(v) {
+  const W = 620, H = 150, L = 24, R = 24, T = 34, B = 40;
+  const iw = W - L - R;
+  const p33 = v.hist_p33 || v.forecast_vol * 0.7;
+  const p67 = v.hist_p67 || v.forecast_vol * 1.3;
+  const hi = Math.max(p67 * 1.7, v.current_vol * 1.25, v.forecast_vol * 1.3, 0.05);
+  const X = x => L + Math.min(1, Math.max(0, x / hi)) * iw;
+  const y = T + 42;
 
-/* ── 风险管理：波动状态与波动目标化 ──────────────────────────────────
-   结论式表达：结论在前、依据在后。诊断细节不再出现在产品界面上，
-   证据保留在 model.json 与 docs/ 中，供需要复核的人查阅。
-   ──────────────────────────────────────────────────────────────────── */
+  const col = v.state === '高' ? 'var(--red)'
+    : v.state === '低' ? 'var(--down)' : 'var(--gold)';
+  const label = v.state === '高' ? '偏高' : v.state === '低' ? '偏低' : '正常';
+
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img"
+      aria-label="当前波动位置与未来预测">
+    <defs><linearGradient id="vbg" x1="0" x2="1">
+      <stop offset="0" stop-color="var(--down-l)"/>
+      <stop offset="0.5" stop-color="var(--gold-l)"/>
+      <stop offset="1" stop-color="var(--red-l)"/>
+    </linearGradient></defs>
+    <rect x="${L}" y="${y - 9}" width="${iw}" height="18" rx="9"
+      fill="url(#vbg)" opacity="0.55"/>
+    <rect x="${X(p33)}" y="${y - 13}" width="${Math.max(2, X(p67) - X(p33))}"
+      height="26" rx="4" fill="none" stroke="var(--ink-4)" stroke-dasharray="3 3"/>
+    <text x="${L}" y="${T - 8}" font-size="12" fill="var(--ink-4)">低波动</text>
+    <text x="${L + iw}" y="${T - 8}" font-size="12" fill="var(--ink-4)"
+      text-anchor="end">高波动</text>
+
+    <line x1="${X(v.target_vol)}" y1="${y - 26}" x2="${X(v.target_vol)}"
+      y2="${y + 26}" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="${X(v.target_vol)}" y="${y + 40}" font-size="11"
+      fill="var(--ink-3)" text-anchor="middle">目标 ${pct(v.target_vol, 0)}</text>
+
+    <circle cx="${X(v.current_vol)}" cy="${y}" r="7" fill="${col}"
+      stroke="var(--surface)" stroke-width="2.5"/>
+    <text x="${X(v.current_vol)}" y="${y - 22}" font-size="12.5" font-weight="600"
+      fill="${col}" text-anchor="middle">现在 ${pct(v.current_vol, 1)}</text>
+
+    <circle cx="${X(v.forecast_vol)}" cy="${y}" r="6" fill="var(--ink-2)"
+      stroke="var(--surface)" stroke-width="2.5" opacity="0.85"/>
+    <text x="${X(v.forecast_vol)}" y="${y + 20}" font-size="12"
+      fill="var(--ink-2)" text-anchor="middle">未来 20 日 ${pct(v.forecast_vol, 1)}</text>
+
+    <text x="${L}" y="${T + 4}" font-size="12" fill="var(--ink-2)">当前状态：${label}</text>
+  </svg>`;
+}
+
 async function loadVol() {
   try {
     const v = await api('/api/vol');
     renderVol(v);
   } catch (e) {
-    $('#vol-meta').textContent = '不可用';
-    $('#vol-intro').innerHTML = `波动率模块不可用：${esc(e.message)}`;
+    $('#vol-meta').textContent = '';
+    const empty = $('#vol-empty');
+    if (empty) {
+      empty.hidden = false;
+      empty.innerHTML = '<div class="small muted">风险模型暂时取不到数据</div>';
+    }
+    const body = $('#vol-body');
+    if (body) body.hidden = true;
   }
 }
 
@@ -673,30 +720,38 @@ function renderVol(v) {
   const mult = v.multiplier;
   const up = mult >= 1;
   const stateWord = v.state === '高' ? '偏高' : v.state === '低' ? '偏低' : '正常';
+  // 目标波动下的等风险仓位：乘数就是「同样风险能拿多少」
+  const example = Math.round(60 * mult);
 
-  // 一句话结论：现在该做什么。不解释模型怎么选的、也不放诊断图。
-  $('#vol-advice').innerHTML =
-    `<div class="note ${v.state === '高' ? 'warn' : ''}" style="margin:0">
-      <b>现在市场波动${stateWord}，建议把权益仓位乘 ${num(mult, 2)}。</b><br>
-      ${up
-        ? '当前波动低于目标水平，同样的仓位所冒的风险比目标更小，可以适度放宽。'
-        : '当前波动高于目标水平，继续拿同样的仓位会比目标冒更大的风险，建议收缩。'}
-      这只影响<b>仓位大小</b>，不预测涨跌方向。
-    </div>`;
+  // ① 结论 —— 一句话说清该做什么，给到具体数字
+  $('#vol-verdict').innerHTML =
+    `<div class="vrd-main">建议把权益仓位乘 <b>${num(mult, 2)}</b></div>
+     <div class="vrd-sub">例如现在持有 60% 权益，可调整到约 <b>${example}%</b></div>`;
 
-  $('#vol-kpis').innerHTML =
-    kpi('未来 20 日波动', pct(v.forecast_vol, 1), '年化预测', 'gold')
-    + kpi('当前波动水平', stateWord, `历史 ${pct(v.percentile, 0)} 分位`,
-        v.state === '低' ? 'up' : v.state === '高' ? 'down' : '')
-    + kpi('建议仓位乘数', `${num(mult, 2)}×`, up ? '可适度加仓' : '建议减仓',
-        up ? 'up' : 'down');
+  // ② 解读 —— 为什么，以及对「它不预测涨跌」说清楚
+  $('#vol-read').innerHTML =
+    `<b>为什么：</b>当前市场波动${stateWord}（历史 ${pct(v.percentile, 0)} 分位）。
+     ${up
+       ? '同样的仓位，现在承担的风险比目标水平更低，所以可以适度放宽。'
+       : '同样的仓位，现在承担的风险比目标水平更高，所以建议收缩。'}<br>
+     <b>注意：</b>这只调整<b>仓位大小</b>，不预测涨跌方向。目的是让你承担的风险
+     保持稳定，而不是让你赚得更多。`;
 
+  // ③ 一张图
+  $('#vol-band').innerHTML = volBandSvg(v);
+  $('#vol-band-n').innerHTML =
+    `当前波动 <b>${pct(v.current_vol, 1)}</b>，历史 33/67 分位是
+     ${pct(v.hist_p33, 1)} / ${pct(v.hist_p67, 1)}；
+     未来 20 日预测 <b>${pct(v.forecast_vol, 1)}</b>，目标 ${pct(v.target_vol, 0)}。`;
+
+  // ④ 可执行：仓位对照表
   const bases = [0.3, 0.4, 0.5, 0.6, 0.8];
   $('#vol-scale').innerHTML = bases.map(b => {
     const adj = b * mult;
     const over = adj > 0.9;
     const col = over ? 'var(--red)' : mult < 1 ? 'var(--gold)' : 'var(--down)';
-    return `<div class="vol-scale-row">
+    const hit = Math.abs(b - 0.6) < 1e-6;
+    return `<div class="vol-scale-row"${hit ? ' style="font-weight:600"' : ''}>
       <span class="base">${pct(b, 0)}</span>
       <span class="arrow">→</span>
       <span class="adj" style="color:${col}">${pct(adj, 0)}</span>
@@ -705,7 +760,7 @@ function renderVol(v) {
     </div>`;
   }).join('')
     + `<div class="dg-n" style="margin-top:10px">
-        左列是当前权益仓位，右列是按建议调整后的仓位。<br>
+        左列是当前权益仓位，右列是调整后的仓位。<br>
         <span class="muted">本项目量化预测部分仅参考，请务必谨慎用于投资决策。</span>
       </div>`;
 }

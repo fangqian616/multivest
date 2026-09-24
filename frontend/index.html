@@ -242,12 +242,21 @@
     </div>
 
     <div class="card accent" id="vol-card">
-      <div class="card-hd"><span class="hd-bar"></span><h3>风险管理建议</h3>
+      <div class="card-hd"><span class="hd-bar"></span><h3>今天该拿多少仓位</h3>
         <div class="right" id="vol-meta">正在读取…</div></div>
       <div class="card-bd">
         <div id="vol-body" hidden>
-          <div id="vol-advice"></div>
-          <div class="kpis" id="vol-kpis" style="margin-top:14px"></div>
+          <!-- 结论 -->
+          <div class="verdict" id="vol-verdict"></div>
+          <!-- 大白话解读 -->
+          <div class="note" id="vol-read" style="margin-top:14px"></div>
+          <!-- 一张图：现在的位置与未来 20 日的预测 -->
+          <div class="dg" style="margin-top:16px">
+            <div class="dg-t">当前波动在历史中的位置，与未来 20 日的预测</div>
+            <div class="chart h180" id="vol-band"></div>
+            <div class="dg-n" id="vol-band-n"></div>
+          </div>
+          <!-- 可执行：仓位对照表 -->
           <div class="dg" style="margin-top:16px">
             <div class="dg-t">按这个建议，你的仓位会变成多少</div>
             <div id="vol-scale" style="margin-top:4px"></div>

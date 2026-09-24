@@ -95,8 +95,15 @@ def build_exe(onefile: bool = True) -> int:
         # PyInstaller 找不到它们；真要编译进来还会让 data.market 的
         # Path(__file__).parent/"dataset" 指向错误位置。
         # 正确的做法是让 sys.path 包含 _MEIPASS/backend，从数据目录导入。
-        # 排除体积大且用不到的库
-        "--exclude-module", "matplotlib", "--exclude-module", "numpy",
+        # numpy 是**必需**的：backend/engine/rv.py（极差类波动率估计量）用它，
+        # 而 vol.py 依赖 rv.py 才能算出波动预测。
+        # 这里曾经写着 `--exclude-module numpy` —— 那时后端确实不用 numpy，
+        # 排除它可以省十几 MB；后来 rv.py 引入 numpy，这个排除项就变成了
+        # 「打包成功、运行 500：No module named 'numpy'」。教训：
+        # **排除项与依赖会各自演化，改代码时不会有人回头看一眼打包参数。**
+        "--collect-all", "numpy",
+        # 排除体积大且确实用不到的库
+        "--exclude-module", "matplotlib",
         "--exclude-module", "pandas", "--exclude-module", "tkinter",
         "--exclude-module", "PyQt5", "--exclude-module", "PySide6",
         "--exclude-module", "scipy", "--exclude-module", "notebook",

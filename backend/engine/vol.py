@@ -31,6 +31,12 @@ import math
 from pathlib import Path
 from typing import Optional
 
+# **模块级导入**，不要放进函数里。
+# 曾经写成函数内 `from engine.rv import realized_variance`，PyInstaller 没能把
+# 这条链上的 numpy 收进 exe，打包后 /api/vol 直接 500：No module named 'numpy'。
+# 模块级导入让静态分析一定看得见（同时 build_desktop.py 里也显式声明了 hidden-import）。
+from engine.rv import realized_variance
+
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / "data" / "dataset" / "model.json"
 
 TARGET_VOL = 0.12
@@ -159,7 +165,6 @@ class VolEngine:
         dates, o, h, l, c = market.ohlc(rep)
         if not c:
             return [], [], est, rep
-        from engine.rv import realized_variance  # 局部导入，避免数据层依赖
         rv = realized_variance(o, h, l, c, 22, est)
         return dates, [float(x) if x == x else None for x in rv], est, rep
 

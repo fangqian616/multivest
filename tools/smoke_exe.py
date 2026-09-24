@@ -28,7 +28,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -138,6 +138,30 @@ def main() -> int:
                 print(f"     ❌ {asset} status={st}")
                 return 1
             print(f"  ✅ {asset}（{len(b)} 字节）")
+
+        # ── 业务接口：这几条是**因为踩过坑才加的** ──────────────────────────
+        # 只查 health / settings / 静态资源是不够的：曾经出现过
+        # 「打包成功、首页正常，但 /api/vol 抛 500：No module named 'numpy'」——
+        # 原因是 build 脚本里有一条 --exclude-module numpy，而后端后来开始用 numpy。
+        # 只要没真正调用到那条依赖链，冒烟测试就是绿的。
+        print("  业务接口 …")
+        for ep in ("/api/vol", "/api/board", "/api/quant"):
+            try:
+                st, b = get(f"{base}{ep}", timeout=90)
+            except HTTPError as exc:
+                print(f"     ❌ {ep} HTTP {exc.code} —— 接口报错，非 200")
+                return 1
+            except URLError as exc:
+                print(f"     ❌ {ep} 取不到：{exc}")
+                return 1
+            if st != 200:
+                print(f"     ❌ {ep} status={st}")
+                return 1
+            data = json.loads(b)
+            if ep == "/api/vol" and not data.get("available"):
+                print(f"     ❌ /api/vol 返回不可用：{data.get('error')}")
+                return 1
+            print(f"  ✅ {ep}（{len(b)} 字节）")
 
         print()
         print("=" * 58)
