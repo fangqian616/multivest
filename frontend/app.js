@@ -883,6 +883,44 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !$('#settings-mask').hidden) closeSettings();
 });
 
+
+
+/* ── 以下函数在撤下诊断面板时被误删，此处从旧版恢复 ────────────────
+   （详见 tools/check_frontend.py 的说明）──────────────────────────── */
+
+function renderDailyHistory() {
+  const rows = state.dailyList || [];
+  $('#daily-hist-meta').textContent = `共 ${rows.length} 份`;
+  $('#runs-daily').innerHTML = rows.length
+    ? rows.map(r => `<div class="run-row" data-date="${esc(r.date)}">
+        <div><div class="nm">${esc(r.date)}　<span class="muted small">${esc((r.summary || '').slice(0, 46))}…</span></div>
+          <div class="mt">仓位 ${pct(r.position, 0)}　建议 ${r.n_actions} 条　均涨跌 ${signed(r.avg_change)}</div></div>
+        <div class="num" style="font-size:13px">${scoreMini(r.scores)}</div>
+      </div>`).join('')
+    : '<div class="empty" style="padding:32px"><div class="small">暂无研判</div></div>';
+  $$('#runs-daily .run-row').forEach(n => n.addEventListener('click', async () => {
+    const rec = await api('/api/daily/' + n.dataset.date);
+    state.daily = rec; renderDaily(rec);
+    toast('已载入 ' + n.dataset.date + ' 研判', 'ok');
+  }));
+  $('#daily-history').innerHTML = $('#runs-daily').innerHTML;
+  $$('#daily-history .run-row').forEach(n => n.addEventListener('click', async () => {
+    const rec = await api('/api/daily/' + n.dataset.date);
+    state.daily = rec; renderDaily(rec); window.scrollTo({ top: 0, behavior: 'smooth' });
+  }));
+  $('#rec-daily-meta').textContent = `${rows.length} 份`;
+}
+
+
+
+/* ── 以下函数在撤下诊断面板时被误删，此处从旧版恢复 ────────────────
+   （详见 tools/check_frontend.py 的说明）──────────────────────────── */
+
+function scoreMini(scores) {
+  const v = Object.values(scores || {}).filter(x => x != null);
+  return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(0) : '—';
+}
+
 /* ── 研判进度条 ────────────────────────────────────────────────────────── */
 // 超过这个秒数没有任何进度事件，就不再当成"模型慢"，而是"可能失联"。
 // 依据：服务端单次研判有 15 分钟硬上限，正常一次 3~5 分钟；

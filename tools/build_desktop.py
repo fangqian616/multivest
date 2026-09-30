@@ -20,6 +20,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -54,6 +55,27 @@ def build_exe(onefile: bool = True) -> int:
     if not ICON.is_file():
         print("图标缺失，正在生成…")
         subprocess.run([sys.executable, str(ROOT / "tools" / "make_icon.py")], check=False)
+
+    # 先把正在运行的旧实例停掉。
+    # Windows 不允许覆盖正在运行的 exe，PyInstaller 会在最后一步以
+    #   PermissionError: [WinError 5] 拒绝访问: dist\...exe
+    # 收场 —— 而那条报错埋在第 200 行构建日志的末尾，读起来像"打包失败"
+    # 而不是"文件被占用"。这个坑踩过两次（一次开着应用、一次冒烟测试刚跑完），
+    # 所以在这里堵掉。
+    exe_path = DIST / f"{APP_NAME}.exe"
+    if exe_path.is_file():
+        r = subprocess.run(["tasklist", "/FI", f"IMAGENAME eq {APP_NAME}.exe", "/NH"],
+                           capture_output=True, text=True, errors="replace")
+        if APP_NAME in (r.stdout or ""):
+            print(f"  检测到「{APP_NAME}」正在运行，先结束进程（否则无法覆盖 exe）…")
+            subprocess.run(["taskkill", "/IM", f"{APP_NAME}.exe", "/F"], capture_output=True)
+            time.sleep(2)
+        try:
+            with open(exe_path, "ab"):
+                pass
+        except OSError:
+            print(f"  ❌ {exe_path} 仍被占用，请手动关闭后重试")
+            return 1
 
     # 需要一并打进 exe 的数据：后端代码、前端页面、内置数据集
     sep = ";" if sys.platform.startswith("win") else ":"
