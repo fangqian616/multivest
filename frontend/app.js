@@ -634,53 +634,44 @@ function renderDaily(rec) {
   $('#daily-badge').hidden = false;
 }
 
-/* 波动位置图：把「现在在哪、未来去哪」画成一条轴。
-   只讲一件事 —— 当前波动相对历史区间与目标水平的位置。
-   （这张图原本叫 volBandSvg，随诊断面板一起被删掉了，此处重写。） */
+/* 波动对比图：三条柱并排比长度。
+   只回答一个问题 —— 现在的波动比目标高还是低。（原历史轴版本已废弃，
+   三个点挤在一起读不出来，见 tools/ 里的说明。） */
 function volBandSvg(v) {
-  const W = 620, H = 150, L = 24, R = 24, T = 34, B = 40;
-  const iw = W - L - R;
-  const p33 = v.hist_p33 || v.forecast_vol * 0.7;
-  const p67 = v.hist_p67 || v.forecast_vol * 1.3;
-  const hi = Math.max(p67 * 1.7, v.current_vol * 1.25, v.forecast_vol * 1.3, 0.05);
-  const X = x => L + Math.min(1, Math.max(0, x / hi)) * iw;
-  const y = T + 42;
+  const W = 620, H = 176;   // 容器是 h180，留一点余量
+  const xLabel = 8, xBar = 104, xVal = 528;
+  const barW = xVal - xBar - 46;
+  const rows = [
+    { key: 'now', label: '现在', val: v.current_vol,
+      fill: v.state === '高' ? 'var(--red)' : (v.state === '低' ? 'var(--down)' : 'var(--gold)'),
+      note: `历史 ${pct(v.percentile, 0)} 分位` },
+    { key: 'fc', label: '未来 20 日预测', val: v.forecast_vol,
+      fill: 'var(--ink-4)', note: '模型预测' },
+    { key: 'tg', label: '目标水平', val: v.target_vol,
+      fill: 'none', note: '你设定的风险水平', dashed: true },
+  ];
+  const hi = Math.max(...rows.map(r => r.val || 0)) * 1.12 || 0.1;
+  const y0 = 34, gap = 44, bh = 24;
 
-  const col = v.state === '高' ? 'var(--red)'
-    : v.state === '低' ? 'var(--down)' : 'var(--gold)';
-  const label = v.state === '高' ? '偏高' : v.state === '低' ? '偏低' : '正常';
+  const bars = rows.map((r, i) => {
+    const y = y0 + i * gap;
+    const w = Math.max(3, ((r.val || 0) / hi) * barW);
+    const stroke = r.dashed
+      ? 'stroke="var(--ink-4)" stroke-width="1.6" stroke-dasharray="5 4" fill="none"'
+      : `fill="${r.fill}"`;
+    return `
+    <text x="${xLabel}" y="${y + 17}" font-size="13" fill="var(--ink-2)">${r.label}</text>
+    <rect x="${xBar}" y="${y}" width="${barW}" height="${bh}" rx="4"
+      fill="var(--surface-3)" opacity="0.5"/>
+    <rect x="${xBar}" y="${y}" width="${w.toFixed(1)}" height="${bh}" rx="4" ${stroke}/>
+    <text x="${xVal}" y="${y + 17}" font-size="15" font-weight="600"
+      fill="var(--ink)" font-family="var(--font-num)">${pct(r.val, 1)}</text>
+    <text x="${xBar}" y="${y + bh + 14}" font-size="11" fill="var(--ink-4)">${r.note}</text>`;
+  }).join('');
 
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img"
-      aria-label="当前波动位置与未来预测">
-    <defs><linearGradient id="vbg" x1="0" x2="1">
-      <stop offset="0" stop-color="var(--down-l)"/>
-      <stop offset="0.5" stop-color="var(--gold-l)"/>
-      <stop offset="1" stop-color="var(--red-l)"/>
-    </linearGradient></defs>
-    <rect x="${L}" y="${y - 9}" width="${iw}" height="18" rx="9"
-      fill="url(#vbg)" opacity="0.55"/>
-    <rect x="${X(p33)}" y="${y - 13}" width="${Math.max(2, X(p67) - X(p33))}"
-      height="26" rx="4" fill="none" stroke="var(--ink-4)" stroke-dasharray="3 3"/>
-    <text x="${L}" y="${T - 8}" font-size="12" fill="var(--ink-4)">低波动</text>
-    <text x="${L + iw}" y="${T - 8}" font-size="12" fill="var(--ink-4)"
-      text-anchor="end">高波动</text>
-
-    <line x1="${X(v.target_vol)}" y1="${y - 26}" x2="${X(v.target_vol)}"
-      y2="${y + 26}" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="4 3"/>
-    <text x="${X(v.target_vol)}" y="${y + 40}" font-size="11"
-      fill="var(--ink-3)" text-anchor="middle">目标 ${pct(v.target_vol, 0)}</text>
-
-    <circle cx="${X(v.current_vol)}" cy="${y}" r="7" fill="${col}"
-      stroke="var(--surface)" stroke-width="2.5"/>
-    <text x="${X(v.current_vol)}" y="${y - 22}" font-size="12.5" font-weight="600"
-      fill="${col}" text-anchor="middle">现在 ${pct(v.current_vol, 1)}</text>
-
-    <circle cx="${X(v.forecast_vol)}" cy="${y}" r="6" fill="var(--ink-2)"
-      stroke="var(--surface)" stroke-width="2.5" opacity="0.85"/>
-    <text x="${X(v.forecast_vol)}" y="${y + 20}" font-size="12"
-      fill="var(--ink-2)" text-anchor="middle">未来 20 日 ${pct(v.forecast_vol, 1)}</text>
-
-    <text x="${L}" y="${T + 4}" font-size="12" fill="var(--ink-2)">当前状态：${label}</text>
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}"
+      role="img" aria-label="现在、未来预测与目标波动率的对比">
+    ${bars}
   </svg>`;
 }
 
@@ -739,10 +730,15 @@ function renderVol(v) {
 
   // ③ 一张图
   $('#vol-band').innerHTML = volBandSvg(v);
+  // 说明也按「比目标高还是低」来写 —— 图和文字同一个口径，
+  // 否则用户要在两套语言之间做换算。
+  const gapPct = v.target_vol > 0 ? (v.current_vol / v.target_vol - 1) : 0;
+  const act = gapPct > 0.05 ? '收缩' : gapPct < -0.05 ? '放宽' : '维持';
   $('#vol-band-n').innerHTML =
-    `当前波动 <b>${pct(v.current_vol, 1)}</b>，历史 33/67 分位是
-     ${pct(v.hist_p33, 1)} / ${pct(v.hist_p67, 1)}；
-     未来 20 日预测 <b>${pct(v.forecast_vol, 1)}</b>，目标 ${pct(v.target_vol, 0)}。`;
+    `当前波动比目标<b>${gapPct >= 0 ? '高' : '低'}
+     ${pct(Math.abs(gapPct), 0)}</b>，所以建议<b>${act}</b>仓位。<br>
+     这个水平在过去属于第 ${pct(v.percentile, 0)} 百分位
+     （历史常见区间 ${pct(v.hist_p33, 1)} ~ ${pct(v.hist_p67, 1)}）。`;
 
   // ④ 可执行：仓位对照表
   const bases = [0.3, 0.4, 0.5, 0.6, 0.8];
